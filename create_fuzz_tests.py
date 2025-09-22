@@ -7,6 +7,21 @@ import re
 from pathlib import Path
 import yaml
 
+import tempfile
+import signal
+import shutil
+
+base_tmp_dir = Path("fuzz_tmp")
+base_tmp_dir.mkdir(exist_ok=True)
+tmpfolder = tempfile.mkdtemp(dir=base_tmp_dir)
+
+def cleanup(signum, frame):
+    shutil.rmtree(base_tmp_dir, ignore_errors=True)
+    exit(1)
+
+signal.signal(signal.SIGINT, cleanup)
+signal.signal(signal.SIGTERM, cleanup)
+
 # config management
 with open("config.yaml", "r") as yamlConfig:
     config = yaml.safe_load(yamlConfig)
@@ -20,7 +35,7 @@ display_terminal_messages = config["display_terminal_messages"]
 
 
 # map TypeScript types to fast-check arbitraries
-# TODO: increase specification, fix optional paramaters
+# TODO: increase specification, fix optional parameters
 
 def make_arb_for(ts_type_input: str) -> str:
     ts_type = ts_type_input.strip()
@@ -63,9 +78,9 @@ def make_relative_import(test_file: Path, target_file: str) -> str:
 # create functionName_fuzz.test.ts for each exported function
 
 def generate_test_file(fn_info, externals, test_file: Path):
-    fn_name  = fn_info["name"]
-    params   = fn_info["params"]
-    file_path= fn_info["file"]
+    fn_name = fn_info.get("name") or "<anonymous>"
+    params  = fn_info.get("params", [])
+    file_path = fn_info.get("file", "<unknown>")
 
     # Mocks referenced libraries
     # TODO: add option to reference only necessary libraries instead of importing everything
@@ -153,6 +168,13 @@ def main():
                 print(f"[SKIP] No tsconfig.json in {program_path.name}")
             continue
 
+        
+        project_test_dir = fuzz_test_dir / program_path.name
+        if project_test_dir.exists():
+            if display_terminal_messages:
+                print(f"[SKIP] Fuzz test folder already exists for {program_path.name}")
+            continue
+
         # export all available functions
         if display_terminal_messages:
             print(f"[INFO] Analyzing {program_path.name}")
@@ -165,7 +187,11 @@ def main():
 
         # create the test file for each function
         for fn_info in functions:
-            test_filename = f"{fn_info['name']}_fuzz.test.ts"
+            if "name" in fn_info:
+                test_filename = f"{fn_info['name']}_fuzz.test.ts"
+            else:
+                # fallback behavior, do something better here
+                test_filename = "unknown_fuzz.test.ts"
             test_path = project_test_dir / test_filename
             generate_test_file(fn_info, externals, test_path)
         

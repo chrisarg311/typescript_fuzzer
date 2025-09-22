@@ -1,10 +1,12 @@
 --- 
 # config for the typescript fuzzer project
 
-project_directory: programs    #directory storing the projects to be analyzed
+project_directory: all_programs    #directory storing the projects to be analyzed
 fuzz_test_directory: fuzz_tests    #directory storing the generated fuzz tests and logs
-ts_lister: list_functions.ts    #script that extracts functions from source files
+ts_lister: list_fns_new.ts    #script that extracts functions from source files
 verbosity: 0    #verbosity of fast-check log reports (0 is minimal, 1 and 2 increase respectively)
 display_terminal_messages: true    #display or mute terminal messages showing progress
 create_comprehensive_log: true    #creates an additional file with logs for all tests run in /[fuzz_test_directory]
 comprehensive_log_name: allLogs.log    #name of complete log file
+overwrite_logs: false    #if logs already exist for a project, overwrite them? (skip if false)
+timeout_duration: 10      #timeout length in seconds
